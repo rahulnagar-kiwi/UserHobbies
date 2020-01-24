@@ -84,15 +84,16 @@ class SetHobbiesViewSet(GenericViewSet):
 class SetDepartmentViewSet(GenericViewSet):
     @action(methods=['POST'], url_name="setdepartment", url_path="setdepartment", serializer_class=UserDepartmentSerializer,
             detail=False)
-    def set_hobby(self, request):
-        user_obj = User.objects.get(pk=request.data["user_id"])
+    def set_department(self, request):
+        user_qs = User.objects.get(pk=request.data["user_id"])
         for i in request.data["department_list"]:
-            department_obj = Departments.objects.get(pk=i)
-            user_hobby_qs = UserDepartments(user=user_obj, department=department_obj)
-            serializer = UserDepartmentSerializer(user_hobby_qs)
+            department_qs = Departments.objects.get(pk=i)
+            user_hobby = UserDepartments(user=user_qs, department=department_qs)
+            dept_serializer = UserDepartmentSerializer(user_hobby)
+            serializer = UserDepartmentSerializer(data= dept_serializer.data)
             if serializer.is_valid():
                  serializer.save()
-        return Response({'hobbies': serializer.data})
+        return Response({'detail': SUCCESS_CODE['2001']})
 
     # @action(methods=['GET'], url_name="gethobby", url_path="gethobby", serializer_class=UserHobbySerializer, detail=False)
     # def set_hobby(self, request):
