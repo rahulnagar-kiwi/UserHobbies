@@ -1,7 +1,8 @@
-from .models import Hobbies, UserHobby, Profile, Rating, User
+from .models import Hobbies, UserHobby, Profile, Rating, User, Departments, UserDepartments
 from rest_framework import serializers
-from django.contrib.auth import get_user_model
 from django.db.models import Avg
+from .messages import ERROR_CODE, SUCCESS_CODE
+from django.contrib.auth import get_user_model, authenticate
 
 
 User = get_user_model()
@@ -13,13 +14,25 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ['username', 'password', 'email']
 
-    # def update(self, request, *args, **kwargs):
-    #     self.object = self.get_object()
-    #     serializer = self.get_serializer(data= request.data)
-    #
-    #     if serializer.is_valid():
-    #         self.object.set_password(serializer.data.get("new_password"))
-    #         self.object.save()
+    @staticmethod
+    def validate_email(value):
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError(ERROR_CODE['4008'])
+        return value
+
+    @staticmethod
+    def validate_password(value):
+        if User.objects.filter(email=value.lower()).exists():
+            raise serializers.ValidationError(ERROR_CODE['4008'])
+        return value
+
+    def create(self, validated_data):
+            password = validated_data.pop('password')
+            validated_data.update({'email': validated_data['email'].lower()})
+            instance = User.objects.create(**validated_data)
+            instance.set_password(password)
+            instance.save()
+            return instance
 
 
 class HobbiesSerializer(serializers.ModelSerializer):
@@ -28,11 +41,15 @@ class HobbiesSerializer(serializers.ModelSerializer):
         fields = ['name',]
 
 
-class UserHobbyySerializer(serializers.ModelSerializer):
+class UserHobbySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserHobby
-        fields = ['hobby', 'is_active']
+        fields = ['user', 'hobby','is_active']
+
+    # def create(self, validated_data):
+    #     user = User.objects.get(pk= validated_data["pk"])
+    #     hobby_pk = validated_data["hobby_pk"]
 
 
 class ProfieSerializer(serializers.ModelSerializer):
@@ -40,9 +57,10 @@ class ProfieSerializer(serializers.ModelSerializer):
     name = serializers.CharField(source="user.username")
     honesty = serializers.SerializerMethodField("avg_honesty")
     hardwork = serializers.SerializerMethodField("avg_hardwork")
+    hobby1 = HobbiesSerializer(many=True, read_only=True)
 
     def get_hobby(self, obj):
-        serializer= UserHobbyySerializer(obj.user.User_Hobby.all(), many=True)
+        serializer= UserHobbySerializer(obj.user.User_Hobby.all(), many=True)
         return serializer.data
 
     def avg_honesty(self, obj):
@@ -55,10 +73,46 @@ class ProfieSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['user', 'name', 'status', 'is_delete', 'created', 'hobby', 'honesty', "hardwork"]
+        fields = ['user', 'name', 'status', 'is_delete', 'created', 'hobby', 'honesty', 'hardwork', 'hobby1']
 
 
 class RatingSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rating
         fields = ['user', 'given_by', 'honesty', 'hardwork']
+
+
+class LoginSerializer(serializers.ModelSerializer):
+    email = serializers.EmailField()
+    password = serializers.CharField()
+
+    class Meta:
+        model = User
+        fields = ('email', 'password')
+
+        def validate_email(self, value):
+            user = User.objects.filter(email=value.lower())
+            if not user.exists():
+                raise serializers.ValidationError(ERROR_CODE['4009'])
+            return value
+
+        def create(self, validated_data):
+            email = validated_data("email")
+            password = validated_data("password")
+            user = authenticate(email=email.lower(), password=password)
+            if user:
+                return user
+            return User.objects.none
+
+
+class UserDepartmentSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = UserDepartments
+        fields = ('user', 'department')
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Departments
+        fields = ('user',)

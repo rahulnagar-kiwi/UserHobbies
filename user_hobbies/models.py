@@ -41,7 +41,7 @@ class Hobbies(models.Model):
 
 class UserHobby(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="User_Hobby")
-    hobby = models.ForeignKey(Hobbies, on_delete=models.CASCADE)
+    hobby = models.ManyToManyField(Hobbies)
     is_active = models.BooleanField(default=True)
 
     def __str__(self):
@@ -62,3 +62,17 @@ class Rating(models.Model):
                 MinValueValidator(0)
         ])
 
+
+class Departments(models.Model):
+    name = models.CharField(max_length=50)
+
+    def __str__(self):
+        return self.name
+
+
+class UserDepartments(models.Model):
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    department = models.ForeignKey(Departments, on_delete=models.CASCADE)
+
+    def __str__(self):
+        return self.user.username
