@@ -94,21 +94,3 @@ class SetDepartmentViewSet(GenericViewSet):
                  serializer.save()
         return Response({'hobbies': serializer.data})
 
-    # @action(methods=['GET'], url_name="gethobby", url_path="gethobby", serializer_class=UserHobbySerializer, detail=False)
-    # def set_hobby(self, request):
-    #         profile_qs = UserHobby.objects.all()
-    #         serializer = UserHobbySerializer(profile_qs, many=True)
-    #         return Response({'hobbies': serializer.data})
-
-
-        # check_qs = UserHobby.objects.get(pk=request.data["user_id"])
-        # if check_qs:
-        #     UserHobby.objects.get(pk=request.data["user_id"]).delete()
-        # else:
-        #     return Response(status=status.HTTP_404_NOT_FOUND)
-        # profile_qs = UserHobby(user=User.objects.get(pk=request.data["user_id"]))
-        # profile_qs.save()
-        # for i in request.data["hobby_list"]:
-        #     profile_qs.hobby.add(i)
-        # serializer = UserHobbySerializer(profile_qs)
-        # return Response({'hobbies': serializer.data})
