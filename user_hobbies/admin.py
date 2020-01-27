@@ -1,5 +1,7 @@
 from django.contrib import admin
+
 from .models import Profile, Hobbies, UserHobby, Rating, Departments, UserDepartments
+
 # Register your models here.
 
 admin.site.register(Departments)

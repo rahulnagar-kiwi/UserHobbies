@@ -1,19 +1,19 @@
-from .models import Hobbies, UserHobby, Profile, Rating, User, Departments, UserDepartments
-from rest_framework import serializers
+from django.contrib.auth import get_user_model
 from django.db.models import Avg
-from .messages import ERROR_CODE, SUCCESS_CODE
-from django.contrib.auth import get_user_model, authenticate
+from rest_framework import serializers
 
-
+from .messages import ERROR_CODE
+from .models import Hobbies, UserHobby, Profile, Rating, User, Departments, UserDepartments
 
 User = get_user_model()
 
 
 class UserSerializer(serializers.ModelSerializer):
+    sumit = serializers.ListField(child=serializers.IntegerField())
 
     class Meta:
         model = User
-        fields = ['username', 'password', 'email']
+        fields = ['password', 'email', "sumit"]
 
     @staticmethod
     def validate_email(value):
@@ -27,16 +27,19 @@ class UserSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(ERROR_CODE['4008'])
         return value
 
+    def validate(self, attrs):
+        return attrs
+
     def create(self, validated_data):
             password = validated_data.pop('password')
             validated_data.update({'email': validated_data['email'].lower()})
-            instance = User.objects.create(**validated_data)
+            instance = User.objects.create(email=validated_data['email'].lower())
             instance.set_password(password)
             instance.save()
             return instance
 
 
-class HobbiesSerializer(serializers.ModelSerializer):
+class HobbySerializer(serializers.ModelSerializer):
     class Meta:
         model = Hobbies
         fields = ['name',]
@@ -46,23 +49,17 @@ class UserHobbySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = UserHobby
-        fields = ['user', 'hobby','is_active']
-
-    # def create(self, validated_data):
-    #     user = User.objects.get(pk= validated_data["pk"])
-    #     hobby_pk = validated_data["hobby_pk"]
+        fields = ['hobby',]
 
 
 class ProfieSerializer(serializers.ModelSerializer):
-    hobby = serializers.SerializerMethodField("get_hobby")
+    hobby_list = serializers.SerializerMethodField("get_hobby")
     name = serializers.CharField(source="user.username")
     honesty = serializers.SerializerMethodField("avg_honesty")
     hardwork = serializers.SerializerMethodField("avg_hardwork")
-    hobby1 = HobbiesSerializer(many=True, read_only=True)
 
     def get_hobby(self, obj):
-        serializer= UserHobbySerializer(obj.user.User_Hobby.all(), many=True)
-        return serializer.data
+         return obj.user.User.values_list('hobby__name', 'hobby__id').all()
 
     def avg_honesty(self, obj):
         rating_qs = obj.user.user_rating.all().aggregate(Avg('honesty'))
@@ -74,7 +71,7 @@ class ProfieSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Profile
-        fields = ['user', 'name', 'status', 'is_delete', 'created', 'hobby', 'honesty', 'hardwork', 'hobby1']
+        fields = ['user', 'name', 'status', 'is_delete', 'created', 'hobby_list', 'honesty', 'hardwork']
 
 
 class RatingSerializer(serializers.ModelSerializer):
@@ -91,29 +88,48 @@ class LoginSerializer(serializers.ModelSerializer):
         model = User
         fields = ('email', 'password')
 
-        def validate_email(self, value):
+    def validate_email(self, value):
             user = User.objects.filter(email=value.lower())
             if not user.exists():
                 raise serializers.ValidationError(ERROR_CODE['4009'])
             return value
 
-        def create(self, validated_data):
-            email = validated_data("email")
-            password = validated_data("password")
-            user = authenticate(email=email.lower(), password=password)
-            if user:
-                return user
-            return User.objects.none
+    def create(self, validated_data):
+            email = validated_data["email"]
+            password = validated_data["password"]
+            user = User.objects.filter(email=email.lower())
+            if user.exists():
+                user = user.first()
+                if user.check_password(password):
+                   return user
+                return User.objects.none()
+            return User.objects.none()
+
+
+class DepartmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Departments
+        fields = ('name',)
 
 
 class UserDepartmentSerializer(serializers.ModelSerializer):
+    department = serializers.ListField(child=serializers.PrimaryKeyRelatedField(queryset=Departments.objects.all()))
 
     class Meta:
         model = UserDepartments
         fields = ('user', 'department')
 
 
-class DepartmentSerializer(serializers.ModelSerializer):
+class GetDepartmentSerializer(serializers.ModelSerializer):
+    dept_name = serializers.SerializerMethodField('get_name')
+    username = serializers.SerializerMethodField("get_user")
+
+    def get_name(self, obj):
+        return obj.department.name
+
+    def get_user(self, obj):
+        return obj.user.username
+
     class Meta:
-        model = Departments
-        fields = ('user',)
+        model = UserDepartments
+        fields = ('dept_name', 'user','username')
